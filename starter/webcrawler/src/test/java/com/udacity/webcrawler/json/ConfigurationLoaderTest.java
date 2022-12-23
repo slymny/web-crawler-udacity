@@ -28,7 +28,12 @@ public final class ConfigurationLoaderTest {
         " }";
 
     Reader reader = new StringReader(json);
-    CrawlerConfiguration config = ConfigurationLoader.read(reader);
+    CrawlerConfiguration config;
+    try {
+      config = ConfigurationLoader.read(reader);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
     try {
       assertThat(reader.ready()).isTrue();
     } catch (IOException e) {
@@ -60,7 +65,12 @@ public final class ConfigurationLoaderTest {
         " }";
 
     Reader reader = new StringReader(json);
-    CrawlerConfiguration config = ConfigurationLoader.read(reader);
+    CrawlerConfiguration config;
+    try {
+      config = ConfigurationLoader.read(reader);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
     try {
       assertThat(reader.ready()).isTrue();
     } catch (IOException e) {
