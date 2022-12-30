@@ -46,9 +46,7 @@ public final class ConfigurationLoader {
      * @return the loaded {@link CrawlerConfiguration}.
      */
     public CrawlerConfiguration load() {
-        Reader reader;
-        try {
-            reader = Files.newBufferedReader(path);
+        try (Reader reader = Files.newBufferedReader(path)) {
             return read(reader);
         } catch (IOException e) {
             throw new RuntimeException(e);

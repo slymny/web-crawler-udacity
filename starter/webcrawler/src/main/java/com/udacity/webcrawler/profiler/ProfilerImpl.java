@@ -37,13 +37,13 @@ final class ProfilerImpl implements Profiler {
         //       ProfilingMethodInterceptor and return a dynamic proxy from this method.
         //       See https://docs.oracle.com/javase/10/docs/api/java/lang/reflect/Proxy.html.
         boolean isProfiled = false;
-        for(Method method : klass.getDeclaredMethods()) {
+        for (Method method : klass.getDeclaredMethods()) {
             if (method.getAnnotation(Profiled.class) != null) {
                 isProfiled = true;
                 break;
             }
         }
-        if(!isProfiled) {
+        if (!isProfiled) {
             throw new IllegalArgumentException("Not profiled!");
         }
         ProfilingMethodInterceptor handler = new ProfilingMethodInterceptor(clock, delegate, state, startTime);
@@ -63,8 +63,11 @@ final class ProfilerImpl implements Profiler {
         if (Files.notExists(path)) {
             Files.createFile(path);
         } else {
-            BufferedWriter writer = Files.newBufferedWriter(path);
-            writeData(writer);
+            try (BufferedWriter writer = Files.newBufferedWriter(path)) {
+                writeData(writer);
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
         }
     }
 
