@@ -8,6 +8,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.Objects;
@@ -56,19 +57,16 @@ final class ProfilerImpl implements Profiler {
     }
 
     @Override
-    public void writeData(Path path) throws IOException {
+    public void writeData(Path path) {
         // TODO: Write the ProfilingState data to the given file path. If a file already exists at that
         //       path, the new data should be appended to the existing file.
         Objects.requireNonNull(path);
-        if (Files.notExists(path)) {
-            Files.createFile(path);
-        } else {
-            try (BufferedWriter writer = Files.newBufferedWriter(path)) {
-                writeData(writer);
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
+        try (BufferedWriter writer = Files.newBufferedWriter(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+            writeData(writer);
+        } catch (IOException ex) {
+            ex.printStackTrace();
         }
+
     }
 
     @Override
