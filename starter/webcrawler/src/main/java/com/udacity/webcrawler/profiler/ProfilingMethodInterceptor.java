@@ -37,7 +37,7 @@ final class ProfilingMethodInterceptor implements InvocationHandler {
         //       ProfilingState methods.
         Instant startTime = null;
         Object invoked;
-        if (method.getAnnotation(Profiled.class) != null) {
+        if (method.isAnnotationPresent(Profiled.class)) {
             startTime = clock.instant();
         }
         try {
@@ -45,9 +45,9 @@ final class ProfilingMethodInterceptor implements InvocationHandler {
         } catch (InvocationTargetException ex) {
             throw ex.getTargetException();
         } catch (IllegalAccessException ex) {
-            throw new RuntimeException(ex);
+            throw new RuntimeException();
         } finally {
-            if (method.getAnnotation(Profiled.class) != null) {
+            if (method.isAnnotationPresent(Profiled.class)) {
                 Duration duration = null;
                 if (startTime != null) {
                     duration = Duration.between(startTime, clock.instant());

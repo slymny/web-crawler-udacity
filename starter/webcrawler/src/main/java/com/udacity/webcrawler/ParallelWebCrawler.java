@@ -53,7 +53,7 @@ final class ParallelWebCrawler implements WebCrawler {
         ConcurrentMap<String, Integer> counts = new ConcurrentHashMap<>();
         ConcurrentSkipListSet<String> visitedUrls = new ConcurrentSkipListSet<>();
         for (String url : startingUrls) {
-            pool.invoke(new parallelCrawlInternal(url, deadline, maxDepth, counts, visitedUrls, parserFactory, clock, ignoredUrls));
+            pool.invoke(new ParallelCrawlInternal(url, deadline, maxDepth, counts, visitedUrls, parserFactory, clock, ignoredUrls));
         }
 
         if (counts.isEmpty()) {
@@ -74,7 +74,7 @@ final class ParallelWebCrawler implements WebCrawler {
         return Runtime.getRuntime().availableProcessors();
     }
 
-    private static class parallelCrawlInternal extends RecursiveTask<Boolean> {
+    private static class ParallelCrawlInternal extends RecursiveAction {
 
         private final String url;
         private final Instant deadline;
@@ -85,7 +85,7 @@ final class ParallelWebCrawler implements WebCrawler {
         private final Clock clock;
         private final List<Pattern> ignoredUrls;
 
-        public parallelCrawlInternal(String url,
+        public ParallelCrawlInternal(String url,
                                      Instant deadline,
                                      int maxDepth,
                                      ConcurrentMap<String, Integer> counts,
@@ -103,20 +103,21 @@ final class ParallelWebCrawler implements WebCrawler {
             this.ignoredUrls = ignoredUrls;
         }
 
+
         @Override
-        protected Boolean compute() {
+        protected void compute() {
             if (maxDepth == 0 || clock.instant().isAfter(deadline)) {
-                return false;
+                return;
             }
             for (Pattern pattern : ignoredUrls) {
                 if (pattern.matcher(url).matches()) {
-                    return false;
+                    return;
                 }
             }
             try {
                 lock.lock();
                 if (visitedUrls.contains(url)) {
-                    return false;
+                    return;
                 }
                 visitedUrls.add(url);
             } finally {
@@ -124,16 +125,24 @@ final class ParallelWebCrawler implements WebCrawler {
             }
 
             PageParser.Result result = parserFactory.get(url).parse();
-            for (ConcurrentMap.Entry<String, Integer> e : result.getWordCounts().entrySet()) {
-                counts.compute(e.getKey(), (key, value) -> (value == null) ? e.getValue() : e.getValue() + value);
+            try {
+                lock.lock();
+                for (ConcurrentMap.Entry<String, Integer> e : result.getWordCounts().entrySet()) {
+                    if (counts.containsKey(e.getKey())) {
+                        counts.put(e.getKey(), e.getValue() + counts.get(e.getKey()));
+                    } else {
+                        counts.put(e.getKey(), e.getValue());
+                    }
+                }
+            } finally {
+                lock.unlock();
             }
 
-            List<parallelCrawlInternal> subtasks = new ArrayList<>();
+            List<ParallelCrawlInternal> subtasks = new ArrayList<>();
             for (String url : result.getLinks()) {
-                subtasks.add(new parallelCrawlInternal(url, deadline, maxDepth - 1, counts, visitedUrls, parserFactory, clock, ignoredUrls));
+                subtasks.add(new ParallelCrawlInternal(url, deadline, maxDepth - 1, counts, visitedUrls, parserFactory, clock, ignoredUrls));
             }
-            invokeAll(subtasks);
-            return true;
+            subtasks.forEach(ForkJoinTask::invoke);
         }
     }
 }
